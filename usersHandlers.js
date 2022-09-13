@@ -1,7 +1,7 @@
 const database = require("./database");
 
 const getUsers = (req, res) => {
-  let sql = "select * from users";
+  let sql = "select firstname,lastname,email,city,language from users";
   const sqlValues = [];
 
   if (req.query.language != null) {
@@ -32,7 +32,10 @@ const getUsersId = (req, res) => {
   const id = parseInt(req.params.id);
 
   database
-    .query("select * from users where id = ?", [id])
+    .query(
+      "select firstname, lastname, email, city, language from users where id = ?",
+      [id]
+    )
     .then(([users]) => {
       if (users[0] != null) {
         res.json(users[0]);
@@ -66,37 +69,64 @@ const postUsers = (req, res) => {
 };
 
 const putUsers = (req, res) => {
-  const id = parseInt(req.params.id);
   const { firstname, lastname, email, city, language } = req.body;
-
-  database
-    .query(
-      "put users set firstname = ?, lastname = ?, email = ?, city = ?, language = ? where id = ?",
-      [firstname, lastname, email, city, language]
-    )
-    .then(([result]) => {
-      if (result.affectedRows === 0) {
-        res.status(404).send("User not found");
-      } else {
-        res.sendStatus(204);
-      }
-    })
-    .catch((err) => {
-      console.error(err);
-      res.status(500).send("Error");
-    });
+  const id = parseInt(req.params.id);
+  if (id === req.payload) {
+    database
+      .query(
+        "put users set firstname = ?, lastname = ?, email = ?, city = ?, language = ? where id = ?",
+        [firstname, lastname, email, city, language]
+      )
+      .then(([result]) => {
+        if (result.affectedRows === 0) {
+          res.status(404).send("User not found");
+        } else {
+          res.sendStatus(204);
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        res.status(500).send("Error");
+      });
+  } else {
+    res.status(403).send("Forbidden");
+  }
 };
 
 const deleteUsers = (req, res) => {
-  const id = pareInt(req.params.id);
+  const id = parseInt(req.params.id);
+  console.log("id", id);
+  console.log("req.payload", req.payload);
+  if (id === req.payload) {
+    database
+      .query("delete from users where id = ?", [id])
+      .then(([result]) => {
+        if (result.affectedRows === 0) {
+          res.status(404).send("User not found");
+        } else {
+          res.sendStatus(204);
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        res.status(500).send("Error");
+      });
+  } else {
+    res.status(403).send("Forbidden");
+  }
+};
+
+const getUsersByEmailWithPasswordAndPassToNext = (req, res, next) => {
+  const { email } = req.body;
 
   database
-    .query("delete users where id = ?", [id])
-    .then(([result]) => {
-      if (result.affectedRows === 0) {
-        res.status(404).send("User not found");
+    .query("select * from users where email = ?", [email])
+    .then(([users]) => {
+      if (users[0] != null) {
+        req.user = users[0];
+        next();
       } else {
-        res.sendStatus(204);
+        res.status(404).send("Not Found");
       }
     })
     .catch((err) => {
@@ -111,4 +141,5 @@ module.exports = {
   postUsers,
   putUsers,
   deleteUsers,
+  getUsersByEmailWithPasswordAndPassToNext,
 };
